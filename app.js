@@ -1,0 +1,721 @@
+const INITIAL_BALANCE = 300;
+const STORAGE_PREFIX = "petrol-claim-tracker:";
+const API_URL = "./api.php";
+const LAST_USER_KEY = "petrol-claim-tracker:last-user";
+
+const FALLBACK_PRICES = {
+  pump: 3.82,
+  budi95: 1.99,
+  skps: 2.05,
+  date: "2026-08-27",
+  source: "MOF/OpenDOSM fallback",
+};
+
+const PRICE_API =
+  "https://api.data.gov.my/data-catalogue?id=fuelprice&limit=1&sort=date:desc";
+
+const state = {
+  userName: "",
+  prices: { ...FALLBACK_PRICES },
+  records: [],
+};
+
+const els = {
+  loginView: document.querySelector("#loginView"),
+  appView: document.querySelector("#appView"),
+  loginForm: document.querySelector("#loginForm"),
+  loginError: document.querySelector("#loginError"),
+  nameInput: document.querySelector("#nameInput"),
+  welcomeTitle: document.querySelector("#welcomeTitle"),
+  priceStatus: document.querySelector("#priceStatus"),
+  saveStatus: document.querySelector("#saveStatus"),
+  loginPumpPrice: document.querySelector("#loginPumpPrice"),
+  loginSubsidyPrice: document.querySelector("#loginSubsidyPrice"),
+  refreshPricesBtn: document.querySelector("#refreshPricesBtn"),
+  logoutBtn: document.querySelector("#logoutBtn"),
+
+  entryForm: document.querySelector("#entryForm"),
+  entryFormTitle: document.querySelector("#entryFormTitle"),
+  editingId: document.querySelector("#editingId"),
+  dateInput: document.querySelector("#dateInput"),
+  amountInput: document.querySelector("#amountInput"),
+  entryError: document.querySelector("#entryError"),
+  paymentPreview: document.querySelector("#paymentPreview"),
+  cancelEditBtn: document.querySelector("#cancelEditBtn"),
+
+  recordsBody: document.querySelector("#recordsBody"),
+  emptyState: document.querySelector("#emptyState"),
+  recordCount: document.querySelector("#recordCount"),
+  resetBtn: document.querySelector("#resetBtn"),
+
+  initialBalance: document.querySelector("#initialBalance"),
+  initialEntitlement: document.querySelector("#initialEntitlement"),
+  pumpRemaining: document.querySelector("#pumpRemaining"),
+  pumpSpent: document.querySelector("#pumpSpent"),
+  subsidyRemaining: document.querySelector("#subsidyRemaining"),
+  subsidySpent: document.querySelector("#subsidySpent"),
+  litresRemaining: document.querySelector("#litresRemaining"),
+  litresSpent: document.querySelector("#litresSpent"),
+  claimAmount: document.querySelector("#claimAmount"),
+  subsidyDifference: document.querySelector("#subsidyDifference"),
+};
+
+function money(value) {
+  const n = Number(value);
+  return `RM${(Number.isFinite(n) ? n : 0).toLocaleString("en-MY", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`;
+}
+
+function litres(value) {
+  const n = Number(value);
+  return `${(Number.isFinite(n) ? n : 0).toLocaleString("en-MY", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })} L`;
+}
+
+function pricePerLitre(value) {
+  return `${money(value)}/L`;
+}
+
+function storageKey(name = state.userName) {
+  return `${STORAGE_PREFIX}${name.trim().toLowerCase()}`;
+}
+
+function today() {
+  const d = new Date();
+  const local = new Date(d.getTime() - d.getTimezoneOffset() * 60000);
+  return local.toISOString().slice(0, 10);
+}
+
+function getPaidRate() {
+  return document.querySelector('input[name="paidRate"]:checked')?.value || "budi95";
+}
+
+function setPaidRate(value) {
+  const input = document.querySelector(`input[name="paidRate"][value="${value}"]`);
+  if (input) input.checked = true;
+}
+
+function createRecordId() {
+  if (typeof crypto !== "undefined" && crypto.randomUUID) {
+    return crypto.randomUUID();
+  }
+  return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
+function normalizeSavedRecord(record, index) {
+  if (!record || typeof record !== "object") return null;
+
+  const amount = Number(record.amount);
+  if (!Number.isFinite(amount) || amount <= 0) return null;
+
+  const rateType = ["budi95", "pump", "skps"].includes(record.rateType)
+    ? record.rateType
+    : "budi95";
+
+  const cleanDate =
+    typeof record.date === "string" &&
+    /^\d{4}-\d{2}-\d{2}$/.test(record.date)
+      ? record.date
+      : today();
+
+  return {
+    id: record.id || `${cleanDate}-${amount}-${index}`,
+    date: cleanDate,
+    amount: Math.round(amount * 100) / 100,
+    rateType,
+    createdAt: record.createdAt || new Date().toISOString(),
+    updatedAt: record.updatedAt || null,
+  };
+}
+
+/* ---------- Local browser storage ---------- */
+
+function readLocalProfile(name) {
+  try {
+    const raw = localStorage.getItem(storageKey(name));
+    if (!raw) return [];
+
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed.records)) return [];
+
+    return parsed.records.map(normalizeSavedRecord).filter(Boolean);
+  } catch (error) {
+    console.warn("Unable to read local storage:", error);
+    return [];
+  }
+}
+
+function saveLocalProfile() {
+  try {
+    localStorage.setItem(
+      storageKey(),
+      JSON.stringify({
+        userName: state.userName,
+        records: state.records,
+        updatedAt: new Date().toISOString(),
+      }),
+    );
+    return true;
+  } catch (error) {
+    console.warn("Unable to save local storage:", error);
+    return false;
+  }
+}
+
+/* ---------- Optional Apache/PHP server storage ---------- */
+
+async function serverRequest(action, extra = {}) {
+  const response = await fetch(API_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+    },
+    cache: "no-store",
+    body: JSON.stringify({
+      action,
+      userName: state.userName,
+      ...extra,
+    }),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Server returned ${response.status}`);
+  }
+
+  const data = await response.json();
+  if (!data.ok) {
+    throw new Error(data.error || "Server save failed.");
+  }
+  return data;
+}
+
+async function loadServerProfile() {
+  try {
+    const data = await serverRequest("load");
+    if (!Array.isArray(data.records)) return false;
+
+    state.records = data.records.map(normalizeSavedRecord).filter(Boolean);
+    saveLocalProfile();
+
+    els.saveStatus.textContent =
+      `Records loaded from server (${state.records.length}).`;
+    els.saveStatus.className = "save-status success";
+    return true;
+  } catch (error) {
+    console.warn("Server profile unavailable:", error);
+    return false;
+  }
+}
+
+async function syncRecordsToServer() {
+  try {
+    await serverRequest("saveAll", { records: state.records });
+    els.saveStatus.textContent = "Payment records saved on server.";
+    els.saveStatus.className = "save-status success";
+    return true;
+  } catch (error) {
+    const localOk = saveLocalProfile();
+    els.saveStatus.textContent = localOk
+      ? "Server save unavailable — record is saved in this browser."
+      : `Unable to save record: ${error.message}`;
+    els.saveStatus.className = localOk
+      ? "save-status warning"
+      : "save-status error";
+    return false;
+  }
+}
+
+/* ---------- Fuel price refresh: kept from your original feature ---------- */
+
+function normalizePriceRecord(record) {
+  return {
+    pump: Number(record.ron95) || FALLBACK_PRICES.pump,
+    budi95: Number(record.ron95_budi95) || FALLBACK_PRICES.budi95,
+    skps: Number(record.ron95_skps) || FALLBACK_PRICES.skps,
+    date: record.date || FALLBACK_PRICES.date,
+    source: "OpenDOSM official API",
+  };
+}
+
+async function refreshPrices(showSuccess = false) {
+  els.priceStatus.textContent = "Checking latest official price...";
+
+  try {
+    const response = await fetch(PRICE_API, { cache: "no-store" });
+
+    if (!response.ok) {
+      throw new Error("Price service did not respond.");
+    }
+
+    const data = await response.json();
+    const latest = Array.isArray(data) ? data[0] : data?.data?.[0];
+
+    if (!latest) {
+      throw new Error("No latest price row was returned.");
+    }
+
+    state.prices = normalizePriceRecord(latest);
+    updatePriceLabels();
+
+    els.priceStatus.textContent =
+      `${showSuccess ? "Updated. " : ""}Using official OpenDOSM prices effective ${state.prices.date}.`;
+  } catch (error) {
+    state.prices = { ...FALLBACK_PRICES };
+    updatePriceLabels();
+    els.priceStatus.textContent =
+      "Using verified fallback prices for 27 Aug 2026 to 2 Sep 2026. Refresh when online.";
+  }
+
+  render();
+}
+
+function updatePriceLabels() {
+  els.loginPumpPrice.textContent = `${money(state.prices.pump)}/L`;
+  els.loginSubsidyPrice.textContent = `${money(state.prices.budi95)}/L`;
+}
+
+/* ---------- Calculations ---------- */
+
+function rateLabel(rateType) {
+  return {
+    pump: "Pump",
+    budi95: "BUDI95",
+    skps: "SKPS",
+  }[rateType] || "BUDI95";
+}
+
+function recordMath(record) {
+  const paidRate = state.prices[record.rateType] || state.prices.budi95;
+  const amount = Number(record.amount) || 0;
+  const volume = paidRate > 0 ? amount / paidRate : 0;
+
+  const pumpValue = volume * state.prices.pump;
+  const subsidyValue = volume * state.prices.budi95;
+
+  return {
+    paidRate,
+    volume,
+    pumpValue,
+    subsidyValue,
+    subsidyDifference: Math.max(0, pumpValue - subsidyValue),
+  };
+}
+
+function totals(records = state.records) {
+  return records.reduce(
+    (acc, record) => {
+      const calc = recordMath(record);
+      acc.paid += Number(record.amount) || 0;
+      acc.litres += calc.volume;
+      acc.pump += calc.pumpValue;
+      acc.subsidy += calc.subsidyValue;
+      acc.subsidyDifference += calc.subsidyDifference;
+      return acc;
+    },
+    {
+      paid: 0,
+      litres: 0,
+      pump: 0,
+      subsidy: 0,
+      subsidyDifference: 0,
+    },
+  );
+}
+
+function balanceSnapshot(records) {
+  const total = totals(records);
+
+  const initialLitres =
+    state.prices.budi95 > 0
+      ? INITIAL_BALANCE / state.prices.budi95
+      : 0;
+
+  const subsidyRemaining = INITIAL_BALANCE - total.subsidy;
+  const litresRemaining =
+    state.prices.budi95 > 0
+      ? subsidyRemaining / state.prices.budi95
+      : 0;
+
+  const pumpRemaining =
+    Math.max(0, litresRemaining) * state.prices.pump;
+
+  return {
+    ...total,
+    initialLitres,
+    subsidyRemaining,
+    litresRemaining,
+    pumpRemaining,
+  };
+}
+
+/* ---------- Rendering ---------- */
+
+function render() {
+  if (!state.userName) return;
+
+  els.welcomeTitle.textContent = `Welcome back, ${state.userName}.`;
+  els.initialBalance.textContent = money(INITIAL_BALANCE);
+
+  const summary = balanceSnapshot(state.records);
+
+  els.initialEntitlement.textContent =
+    `${litres(summary.initialLitres)} entitlement at ${pricePerLitre(state.prices.budi95)}`;
+
+  els.pumpRemaining.textContent = money(summary.pumpRemaining);
+  els.subsidyRemaining.textContent = money(summary.subsidyRemaining);
+  els.litresRemaining.textContent = litres(summary.litresRemaining);
+
+  els.pumpRemaining.classList.toggle("negative", summary.litresRemaining < 0);
+  els.subsidyRemaining.classList.toggle("negative", summary.subsidyRemaining < 0);
+  els.litresRemaining.classList.toggle("negative", summary.litresRemaining < 0);
+
+  els.pumpSpent.textContent = `${money(summary.pump)} pump value used`;
+  els.subsidySpent.textContent = `${money(summary.subsidy)} subsidy used`;
+  els.litresSpent.textContent = `${litres(summary.litres)} used`;
+
+  els.claimAmount.textContent = money(summary.subsidy);
+  els.subsidyDifference.textContent = money(summary.subsidyDifference);
+
+  renderRecords();
+  updatePaymentPreview();
+}
+
+function renderRecords() {
+  const chronological = [...state.records].sort((a, b) => {
+    const dateCompare = a.date.localeCompare(b.date);
+    if (dateCompare !== 0) return dateCompare;
+    return String(a.createdAt).localeCompare(String(b.createdAt));
+  });
+
+  const snapshots = [];
+  const running = [];
+
+  for (const record of chronological) {
+    running.push(record);
+    snapshots.push({
+      record,
+      calc: recordMath(record),
+      balance: balanceSnapshot(running),
+    });
+  }
+
+  els.recordsBody.innerHTML = "";
+  els.emptyState.classList.toggle("hidden", snapshots.length > 0);
+
+  els.recordCount.textContent =
+    snapshots.length === 0
+      ? "No entries yet"
+      : `${snapshots.length} payment${snapshots.length === 1 ? "" : "s"} saved`;
+
+  snapshots.reverse().forEach(({ record, calc, balance }) => {
+    const row = document.createElement("tr");
+
+    row.innerHTML = `
+      <td data-label="Date">${escapeHtml(record.date)}</td>
+      <td data-label="Paid">${money(record.amount)} <span class="muted">(${rateLabel(record.rateType)})</span></td>
+      <td data-label="RM/L">${pricePerLitre(calc.paidRate)}</td>
+      <td data-label="Litres">${litres(calc.volume)}</td>
+      <td data-label="Pump value">${money(calc.pumpValue)}</td>
+      <td data-label="Subsidised">${money(calc.subsidyValue)}</td>
+      <td data-label="Subsidy left" class="${balance.subsidyRemaining < 0 ? "negative" : ""}">
+        ${money(balance.subsidyRemaining)}
+      </td>
+      <td data-label="Litres left" class="${balance.litresRemaining < 0 ? "negative" : ""}">
+        ${litres(balance.litresRemaining)}
+      </td>
+      <td data-label="Pump value left">${money(balance.pumpRemaining)}</td>
+      <td data-label="Subsidy diff.">${money(calc.subsidyDifference)}</td>
+      <td data-label="Actions">
+        <div class="row-actions">
+          <button type="button" data-action="edit" data-id="${escapeHtml(record.id)}">Edit</button>
+          <button type="button" data-action="delete" data-id="${escapeHtml(record.id)}">Delete</button>
+        </div>
+      </td>
+    `;
+
+    els.recordsBody.appendChild(row);
+  });
+}
+
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
+function updatePaymentPreview() {
+  const amount = Number(els.amountInput.value);
+
+  if (!Number.isFinite(amount) || amount <= 0) {
+    els.paymentPreview.textContent =
+      "Enter an amount to preview the litres and remaining balance.";
+    return;
+  }
+
+  const rateType = getPaidRate();
+  const paidRate = state.prices[rateType] || state.prices.budi95;
+  const volume = amount / paidRate;
+  const subsidyUsed = volume * state.prices.budi95;
+
+  const current = balanceSnapshot(state.records);
+  const subsidyLeft = current.subsidyRemaining - subsidyUsed;
+  const litresLeft = subsidyLeft / state.prices.budi95;
+  const pumpLeft = Math.max(0, litresLeft) * state.prices.pump;
+
+  els.paymentPreview.innerHTML = `
+    <b>${money(amount)}</b> at <b>${pricePerLitre(paidRate)}</b>
+    = <b>${litres(volume)}</b><br>
+    Subsidy used: <b>${money(subsidyUsed)}</b><br>
+    After payment: <b>${money(subsidyLeft)}</b> subsidy,
+    <b>${litres(litresLeft)}</b>,
+    <b>${money(pumpLeft)}</b> pump value left.
+  `;
+}
+
+/* ---------- Forms ---------- */
+
+function clearEntryForm() {
+  els.editingId.value = "";
+  els.entryFormTitle.textContent = "Add petrol payment";
+  els.dateInput.value = today();
+  els.amountInput.value = "";
+  setPaidRate("budi95");
+  els.entryError.textContent = "";
+  els.cancelEditBtn.classList.add("hidden");
+  els.entryForm.querySelector(".primary-button").textContent = "Save payment";
+  updatePaymentPreview();
+}
+
+function validateName(value) {
+  const clean = value.trim().replace(/\s+/g, " ");
+
+  if (!clean) {
+    return { error: "Please enter your name to continue." };
+  }
+
+  if (!/^[a-zA-Z0-9 .'-]+$/.test(clean)) {
+    return {
+      error:
+        "Use letters, numbers, spaces, apostrophes, full stops, or hyphens only.",
+    };
+  }
+
+  return { value: clean };
+}
+
+function validateEntry() {
+  const date = els.dateInput.value;
+  const amount = Number(els.amountInput.value);
+
+  if (!date) {
+    return { error: "Please select a payment date." };
+  }
+
+  if (Number.isNaN(amount) || amount <= 0) {
+    return { error: "Enter an amount greater than RM0.00." };
+  }
+
+  if (amount > 1000) {
+    return {
+      error: "That amount looks too high. Please check the receipt value.",
+    };
+  }
+
+  return {
+    value: {
+      date,
+      amount: Math.round(amount * 100) / 100,
+      rateType: getPaidRate(),
+    },
+  };
+}
+
+/* ---------- Events ---------- */
+
+async function enterProfile(userName, options = {}) {
+  state.userName = userName;
+  state.records = readLocalProfile(state.userName);
+
+  els.loginError.textContent = "";
+  els.loginView.classList.add("hidden");
+  els.appView.classList.remove("hidden");
+
+  localStorage.setItem(LAST_USER_KEY, state.userName);
+  els.nameInput.value = state.userName;
+
+  clearEntryForm();
+  render();
+
+  const loadedFromServer = await loadServerProfile();
+
+  if (loadedFromServer) {
+    render();
+  } else {
+    els.saveStatus.textContent =
+      "Using browser records. Server storage will be retried when you save.";
+    els.saveStatus.className = "save-status warning";
+  }
+
+  if (!options.skipPriceRefresh) {
+    refreshPrices();
+  }
+}
+
+els.loginForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+
+  const result = validateName(els.nameInput.value);
+
+  if (result.error) {
+    els.loginError.textContent = result.error;
+    return;
+  }
+
+  await enterProfile(result.value);
+});
+
+els.entryForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+
+  const result = validateEntry();
+
+  if (result.error) {
+    els.entryError.textContent = result.error;
+    return;
+  }
+
+  const editingId = els.editingId.value;
+
+  if (editingId) {
+    state.records = state.records.map((record) =>
+      record.id === editingId
+        ? {
+            ...record,
+            ...result.value,
+            updatedAt: new Date().toISOString(),
+          }
+        : record,
+    );
+  } else {
+    state.records.push({
+      id: createRecordId(),
+      ...result.value,
+      createdAt: new Date().toISOString(),
+    });
+  }
+
+  /*
+    IMPORTANT FIX:
+    Render BEFORE storage/network work.
+    Even if localStorage or PHP fails, the new payment row appears immediately.
+  */
+  els.entryError.textContent = "";
+  render();
+
+  const localSaved = saveLocalProfile();
+
+  clearEntryForm();
+
+  els.saveStatus.textContent = localSaved
+    ? "Payment added. Saving to server..."
+    : "Payment added. Browser storage is unavailable; trying server...";
+
+  els.saveStatus.className = localSaved
+    ? "save-status"
+    : "save-status warning";
+
+  await syncRecordsToServer();
+});
+
+els.recordsBody.addEventListener("click", async (event) => {
+  const button = event.target.closest("button");
+  if (!button) return;
+
+  const record = state.records.find(
+    (item) => item.id === button.dataset.id,
+  );
+
+  if (!record) return;
+
+  if (button.dataset.action === "edit") {
+    els.editingId.value = record.id;
+    els.entryFormTitle.textContent = "Edit petrol payment";
+    els.dateInput.value = record.date;
+    els.amountInput.value = Number(record.amount).toFixed(2);
+    setPaidRate(record.rateType);
+    els.cancelEditBtn.classList.remove("hidden");
+    els.entryForm.querySelector(".primary-button").textContent =
+      "Update payment";
+    updatePaymentPreview();
+    els.amountInput.focus();
+    return;
+  }
+
+  if (button.dataset.action === "delete") {
+    const ok = window.confirm("Delete this petrol payment record?");
+    if (!ok) return;
+
+    state.records = state.records.filter(
+      (item) => item.id !== record.id,
+    );
+
+    render();
+    saveLocalProfile();
+    await syncRecordsToServer();
+  }
+});
+
+els.cancelEditBtn.addEventListener("click", clearEntryForm);
+
+els.resetBtn.addEventListener("click", async () => {
+  const ok = window.confirm(
+    `Reset all petrol records for ${state.userName}?`,
+  );
+
+  if (!ok) return;
+
+  state.records = [];
+  render();
+  saveLocalProfile();
+  clearEntryForm();
+  await syncRecordsToServer();
+});
+
+els.logoutBtn.addEventListener("click", () => {
+  localStorage.removeItem(LAST_USER_KEY);
+  state.userName = "";
+  state.records = [];
+  els.nameInput.value = "";
+  els.appView.classList.add("hidden");
+  els.loginView.classList.remove("hidden");
+  els.nameInput.focus();
+});
+
+els.refreshPricesBtn.addEventListener("click", () =>
+  refreshPrices(true),
+);
+
+els.amountInput.addEventListener("input", updatePaymentPreview);
+
+document
+  .querySelectorAll('input[name="paidRate"]')
+  .forEach((radio) =>
+    radio.addEventListener("change", updatePaymentPreview),
+  );
+
+els.dateInput.value = today();
+updatePriceLabels();
+
+const rememberedUser = localStorage.getItem(LAST_USER_KEY);
+if (rememberedUser) {
+  els.nameInput.value = rememberedUser;
+  enterProfile(rememberedUser);
+}

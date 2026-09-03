@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Malaysia RON95 petrol claim calculator with local user records, editable entries, and current official price syncing." />
+  <title>Petrol Claim Tracker</title>
+  <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
+  <link rel="preconnect" href="https://api.data.gov.my" />
+  <link rel="stylesheet" href="./styles.css?v=6" />
+</head>
+<body>
+  <main class="shell">
+    <section id="loginView" class="login-view" aria-labelledby="loginTitle">
+      <div class="brand-panel">
+        <div class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 64 64" role="img">
+            <path d="M18 55V10a4 4 0 0 1 4-4h19a4 4 0 0 1 4 4v45" />
+            <path d="M22 20h19V11H22z" />
+            <path d="M45 17h6l4 5v23a5 5 0 0 1-10 0V31" />
+            <path d="M12 55h40" />
+          </svg>
+        </div>
+        <p class="eyebrow">Malaysia RON95</p>
+        <h1 id="loginTitle">Petrol Claim Tracker</h1>
+        <p>
+          Track petrol payments, calculate the full company claim at unsubsidised RON95 pump
+          value, and keep a clean record for reimbursements.
+        </p>
+        <div class="price-strip" aria-label="Current fuel prices">
+          <div>
+            <span>RON95 pump</span>
+            <strong id="loginPumpPrice">RM3.82/L</strong>
+          </div>
+          <div>
+            <span>BUDI95</span>
+            <strong id="loginSubsidyPrice">RM1.99/L</strong>
+          </div>
+        </div>
+      </div>
+
+      <form id="loginForm" class="login-card" novalidate>
+        <label for="nameInput">Your name</label>
+        <input id="nameInput" name="name" type="text" autocomplete="name"
+               placeholder="e.g. Name" maxlength="40" required />
+        <p id="loginError" class="error-text" role="alert"></p>
+        <button type="submit" class="primary-button">Continue</button>
+        <p class="helper-text">
+          Your entries are saved under the name you use here.
+        </p>
+      </form>
+    </section>
+
+    <section id="appView" class="app-view hidden" aria-labelledby="welcomeTitle">
+      <header class="app-header">
+        <div>
+          <p class="eyebrow">Petrol calculator</p>
+          <h1 id="welcomeTitle">Welcome back</h1>
+          <p id="priceStatus" class="status-line">Checking latest official price...</p>
+          <p id="saveStatus" class="save-status"></p>
+        </div>
+        <div class="header-actions">
+          <button id="refreshPricesBtn" type="button" class="ghost-button">Refresh prices</button>
+          <button id="logoutBtn" type="button" class="ghost-button">Switch user</button>
+        </div>
+      </header>
+
+      <section class="summary-grid" aria-label="Balance summary">
+        <article class="summary-card accent">
+          <span>Initial company balance</span>
+          <strong id="initialBalance">RM300.00</strong>
+          <small id="initialEntitlement">150.75 L entitlement</small>
+        </article>
+
+        <article class="summary-card claim-card">
+          <span>Claim this amount</span>
+          <strong id="claimAmount">RM0.00</strong>
+          <small>Actual claim based on subsidised fuel value</small>
+        </article>
+
+        <article class="summary-card">
+          <span>Remaining at pump price</span>
+          <strong id="pumpRemaining">RM575.88</strong>
+          <small id="pumpSpent">RM0.00 pump value used</small>
+        </article>
+
+        <article class="summary-card">
+          <span>Remaining at subsidised price</span>
+          <strong id="subsidyRemaining">RM300.00</strong>
+          <small id="subsidySpent">RM0.00 subsidy used</small>
+        </article>
+
+        <article class="summary-card">
+          <span>Litres remaining</span>
+          <strong id="litresRemaining">150.75 L</strong>
+          <small id="litresSpent">0.00 L used</small>
+        </article>
+
+        <article class="summary-card">
+          <span>Subsidy difference</span>
+          <strong id="subsidyDifference">RM0.00</strong>
+          <small>Difference between pump value and subsidised value</small>
+        </article>
+      </section>
+
+      <section class="claim-guide" aria-label="Claim guidance">
+        <strong>For company claim:</strong>
+        Use <b>Claim this amount</b> for the actual subsidised amount to claim from your company.
+        Your RM300 subsidy balance is converted to litres using BUDI95, and the remaining
+        litres are also shown at the current RON95 pump value.
+      </section>
+
+      <section class="workspace">
+        <form id="entryForm" class="entry-panel" novalidate>
+          <div class="panel-title">
+            <h2 id="entryFormTitle">Add petrol payment</h2>
+            <p>Choose the date, enter the receipt amount, and select which RON95 rate you paid.</p>
+          </div>
+
+          <input id="editingId" type="hidden" />
+
+          <div class="field-row">
+            <label for="dateInput">Payment date</label>
+            <input id="dateInput" type="date" required />
+          </div>
+
+          <div class="field-row">
+            <label for="amountInput">Amount paid (RM)</label>
+            <input id="amountInput" type="number" min="0.01" step="0.01"
+                   inputmode="decimal" placeholder="40.00" required />
+          </div>
+
+          <fieldset class="rate-picker">
+            <legend>Price paid at</legend>
+            <label>
+              <input type="radio" name="paidRate" value="budi95" checked />
+              <span>BUDI95</span>
+            </label>
+            <label>
+              <input type="radio" name="paidRate" value="pump" />
+              <span>Pump price</span>
+            </label>
+            <label>
+              <input type="radio" name="paidRate" value="skps" />
+              <span>SKPS</span>
+            </label>
+          </fieldset>
+
+          <div id="paymentPreview" class="payment-preview">
+            Enter an amount to preview the litres and remaining balance.
+          </div>
+
+          <p id="entryError" class="error-text" role="alert"></p>
+
+          <div class="form-actions">
+            <button type="submit" class="primary-button">Save payment</button>
+            <button id="cancelEditBtn" type="button" class="ghost-button hidden">Cancel edit</button>
+          </div>
+        </form>
+
+        <section class="records-panel" aria-labelledby="recordsTitle">
+          <div class="panel-title split">
+            <div>
+              <h2 id="recordsTitle">Payment records</h2>
+              <p id="recordCount">No entries yet</p>
+            </div>
+            <button id="resetBtn" type="button" class="danger-button">Reset user data</button>
+          </div>
+
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Paid</th>
+                  <th>RM/L</th>
+                  <th>Litres</th>
+                  <th>Claim at pump price</th>
+                  <th>Subsidised</th>
+                  <th>Subsidy left</th>
+                  <th>Litres left</th>
+                  <th>Pump value left</th>
+                  <th>Subsidy diff.</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="recordsBody"></tbody>
+            </table>
+            <div id="emptyState" class="empty-state">
+              Add your first petrol receipt to see balances and claim values.
+            </div>
+          </div>
+        </section>
+      </section>
+
+      <section class="source-note" aria-label="Price source">
+        <h2>Current price source</h2>
+        <p>
+          Prices sync from Malaysia's official OpenDOSM fuel price API when available.
+          Fallback values use MOF/OpenDOSM data for 27 Aug 2026 to 2 Sep 2026:
+          RON95 pump RM3.82/L, BUDI95 RM1.99/L, SKPS RM2.05/L.
+        </p>
+      </section>
+    </section>
+  </main>
+
+  <script src="./app.js?v=6"></script>
+</body>
+</html>
