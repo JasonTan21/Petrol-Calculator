@@ -1,4 +1,4 @@
-### ⛽️ Petrol Claim Tracker
+# ⛽️ Petrol Claim Tracker
 
 A responsive Malaysia RON95 petrol-payment calculator for tracking petrol receipts, estimating company claim values, and reviewing BUDI95 usage. Built with HTML, CSS and JavaScript.
 
