@@ -71,6 +71,8 @@ const els = {
   initialEntitlement: document.querySelector("#initialEntitlement"),
   pumpRemaining: document.querySelector("#pumpRemaining"),
   pumpSpent: document.querySelector("#pumpSpent"),
+  pumpBasisNote: document.querySelector("#pumpBasisNote"),
+  companyPriceMath: document.querySelector("#companyPriceMath"),
   claimAmount: document.querySelector("#claimAmount"),
   subsidyDifference: document.querySelector("#subsidyDifference"),
 };
@@ -530,6 +532,12 @@ function render() {
   els.pumpRemaining.classList.toggle("negative", summary.litresRemaining < 0);
 
   els.pumpSpent.textContent = `${money(summary.pump)} pump value used`;
+  if (els.pumpBasisNote) {
+    els.pumpBasisNote.textContent = `Company litres estimated at BUDI95 ${pricePerLitre(state.prices.budi95)}; valued at RON95 pump ${pricePerLitre(state.prices.pump)}.`;
+  }
+  if (els.companyPriceMath) {
+    els.companyPriceMath.textContent = `Est. company litres left = ${money(summary.subsidyRemaining)} remaining company balance ÷ BUDI95 ${pricePerLitre(state.prices.budi95)} = ${litres(summary.litresRemaining)}. Pump-price equivalent uses RON95 ${pricePerLitre(state.prices.pump)}. This is separate from the government 300 L monthly BUDI95 allowance.`;
+  }
 
   els.claimAmount.textContent = money(summary.subsidy);
   els.subsidyDifference.textContent = money(summary.subsidyDifference);
@@ -576,7 +584,7 @@ function renderRecords() {
       <td data-label="Litres">${litres(calc.volume)}</td>
       <td data-label="Pump value">${money(calc.pumpValue)}</td>
       <td data-label="Subsidised">${money(calc.subsidyValue)}</td>
-      <td data-label="Est. litres left (company)" class="${balance.litresRemaining < 0 ? "negative" : ""}">
+      <td data-label="Est. company litres left (BUDI95)" class="${balance.litresRemaining < 0 ? "negative" : ""}">
         ${litres(balance.litresRemaining)}
       </td>
       <td data-label="Pump value left">${money(balance.pumpRemaining)}</td>

@@ -602,3 +602,95 @@ tbody tr:last-child td { border-bottom:0; }
 @media (max-width: 420px) {
   .summary-grid { grid-template-columns: minmax(0, 1fr); }
 }
+
+
+/* Petrol mobile date alignment and compact dashboard (2026-11-07)
+ * The initial-balance card has an editor. Don't stretch every short KPI card
+ * to the editor's height. Use a single row at roomy desktop widths. */
+.summary-grid {
+  align-items: start;
+}
+.summary-grid > .summary-card {
+  min-width: 0;
+  align-self: start;
+  height: max-content;
+}
+@media (min-width: 1100px) {
+  .summary-grid {
+    grid-template-columns: minmax(290px, 1.45fr) repeat(3, minmax(0, 1fr));
+  }
+}
+@media (min-width: 681px) and (max-width: 1099px) {
+  .summary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+.summary-card .calculation-basis {
+  margin-top: 9px;
+  padding-top: 7px;
+  border-top: 1px solid var(--line);
+  font-size: .76rem;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+.claim-guide .calculation-basis {
+  display: block;
+  margin-top: 6px;
+  color: var(--muted);
+  font-size: .88rem;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+
+/* iOS Safari date inputs can have a wider intrinsic minimum size than number
+ * inputs. Let every grid item shrink and constrain the native input box. */
+@media (max-width: 960px) {
+  .shell, .app-view, .workspace, .entry-panel,
+  .entry-panel .field-row, .entry-panel .panel-title,
+  .entry-panel .rate-picker, .entry-panel .form-actions {
+    min-width: 0;
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+  .workspace { grid-template-columns: minmax(0, 1fr); }
+  .entry-panel {
+    width: 100%;
+    overflow-x: clip;
+    scrollbar-gutter: auto;
+  }
+  .entry-panel .field-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    width: 100%;
+  }
+  .entry-panel .field-row > label {
+    min-width: 0;
+    max-width: 100%;
+  }
+  .entry-panel #dateInput,
+  .entry-panel #amountInput {
+    display: block;
+    box-sizing: border-box;
+    inline-size: 100%;
+    min-inline-size: 0;
+    max-inline-size: 100%;
+    margin-inline: 0;
+    font-size: 16px;
+  }
+  .entry-panel #dateInput {
+    overflow: hidden;
+    text-align: left;
+    padding-inline: 12px;
+  }
+  .entry-panel #dateInput::-webkit-date-and-time-value,
+  .entry-panel #dateInput::-webkit-datetime-edit {
+    min-width: 0;
+    max-width: 100%;
+    text-align: left;
+  }
+}
+@media (max-width: 680px) {
+  .summary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+  .entry-panel .field-row { margin-top: 12px; }
+}
+@media (max-width: 420px) {
+  .summary-grid { grid-template-columns: minmax(0, 1fr); }
+}

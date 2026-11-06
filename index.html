@@ -7,7 +7,7 @@
   <title>Petrol Claim Tracker</title>
   <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
   <link rel="preconnect" href="https://api.data.gov.my" />
-  <link rel="stylesheet" href="./styles.css?v=9-simple" />
+  <link rel="stylesheet" href="./styles.css?v=10-mobile-fit" />
 </head>
 <body>
   <main class="shell">
@@ -94,6 +94,7 @@
           <span>Remaining at pump price</span>
           <strong id="pumpRemaining">RM575.88</strong>
           <small id="pumpSpent">RM0.00 pump value used</small>
+          <small id="pumpBasisNote" class="calculation-basis">Based on estimated company litres at the BUDI95 rate, valued at the current RON95 pump price.</small>
         </article>
 
         <article class="summary-card">
@@ -139,6 +140,7 @@
         payment records is based on the remaining RM balance divided by the BUDI95 rate.
         The separate monthly BUDI95 tracker is an estimate of government quota usage and
         does not change your company balance.
+        <span id="companyPriceMath" class="calculation-basis" aria-live="polite">Company litres are calculated using the current BUDI95 price, not the RON95 pump price.</span>
       </section>
 
       <section class="workspace">
@@ -208,7 +210,7 @@
                   <th>Litres</th>
                   <th>Claim at pump price</th>
                   <th>Subsidised</th>
-                  <th>Est. litres left (company)</th>
+                  <th>Est. company litres left (BUDI95)</th>
                   <th>Pump value left</th>
                   <th>Subsidy diff.</th>
                   <th>Actions</th>
@@ -236,6 +238,6 @@
     </section>
   </main>
 
-  <script src="./app.js?v=9-simple"></script>
+  <script src="./app.js?v=10-mobile-fit"></script>
 </body>
 </html>
