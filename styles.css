@@ -482,3 +482,17 @@ tbody tr:last-child td { border-bottom:0; }
     padding: 8px 10px;
   }
 }
+
+/* Editable starting balance and three current fuel prices */
+.price-strip { grid-template-columns:repeat(3,minmax(0,1fr)); }
+.balance-editor { margin-top:12px; padding-top:12px; border-top:1px solid rgba(255,255,255,.3); }
+.balance-editor label { display:block; font-size:.79rem; font-weight:700; margin-bottom:8px; color:#fff; }
+.balance-editor-row { display:flex; gap:8px; align-items:stretch; }
+.balance-editor-row input { min-width:0; flex:1; width:100%; padding:8px; min-height:40px; background:#fff; color:#192d2a; }
+.balance-editor-row button { border:1px solid rgba(255,255,255,.6); border-radius:8px; padding:6px 13px; background:#fff; color:#125e51; font-weight:800; }
+.balance-editor #balanceStatus { display:block; margin-top:7px; font-size:.75rem; line-height:1.35; color:#fff; }
+@media (max-width:680px) {
+  .price-strip { grid-template-columns:1fr; }
+  .price-strip div { min-width:0; padding:10px 8px; }
+  .price-strip strong { font-size:clamp(.85rem,3.4vw,1.3rem); overflow-wrap:anywhere; }
+}

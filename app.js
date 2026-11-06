@@ -1,4 +1,8 @@
-const INITIAL_BALANCE = 300;
+const DEFAULT_INITIAL_BALANCE = 300;
+const BALANCE_STORAGE_PREFIX = "petrol-claim-tracker:starting-balance:";
+const FUEL_PRICE_CACHE_KEY = "petrol-claim-tracker:last-official-prices";
+// This Cloudflare Workers deployment uses browser-only records. No unauthenticated PHP API.
+const SERVER_STORAGE_ENABLED = false;
 const STORAGE_PREFIX = "petrol-claim-tracker:";
 const API_URL = "./api.php";
 const LAST_USER_KEY = "petrol-claim-tracker:last-user";
@@ -12,10 +16,11 @@ const FALLBACK_PRICES = {
 };
 
 const PRICE_API =
-  "https://api.data.gov.my/data-catalogue?id=fuelprice&limit=1&sort=date:desc";
+  "https://api.data.gov.my/data-catalogue?id=fuelprice&limit=5&sort=-date";
 
 const state = {
   userName: "",
+  initialBalance: DEFAULT_INITIAL_BALANCE,
   prices: { ...FALLBACK_PRICES },
   records: [],
 };
@@ -31,6 +36,7 @@ const els = {
   saveStatus: document.querySelector("#saveStatus"),
   loginPumpPrice: document.querySelector("#loginPumpPrice"),
   loginSubsidyPrice: document.querySelector("#loginSubsidyPrice"),
+  loginSKPSPrice: document.querySelector("#loginSKPSPrice"),
   refreshPricesBtn: document.querySelector("#refreshPricesBtn"),
   logoutBtn: document.querySelector("#logoutBtn"),
 
@@ -49,6 +55,9 @@ const els = {
   resetBtn: document.querySelector("#resetBtn"),
 
   initialBalance: document.querySelector("#initialBalance"),
+  balanceInput: document.querySelector("#balanceInput"),
+  saveBalanceBtn: document.querySelector("#saveBalanceBtn"),
+  balanceStatus: document.querySelector("#balanceStatus"),
   initialEntitlement: document.querySelector("#initialEntitlement"),
   pumpRemaining: document.querySelector("#pumpRemaining"),
   pumpSpent: document.querySelector("#pumpSpent"),
@@ -82,6 +91,64 @@ function pricePerLitre(value) {
 
 function storageKey(name = state.userName) {
   return `${STORAGE_PREFIX}${name.trim().toLowerCase()}`;
+}
+
+function balanceStorageKey(name) {
+  return `${BALANCE_STORAGE_PREFIX}${name.trim().toLowerCase()}`;
+}
+
+function readInitialBalance(name) {
+  try {
+    const raw = localStorage.getItem(balanceStorageKey(name));
+    if (raw === null) return DEFAULT_INITIAL_BALANCE;
+    const amount = Number(raw);
+    if (Number.isFinite(amount) && amount >= 0 && amount <= 100000) return amount;
+  } catch (error) {
+    console.warn("Unable to load starting balance:", error);
+  }
+  return DEFAULT_INITIAL_BALANCE;
+}
+
+function persistInitialBalance(name, amount) {
+  try {
+    localStorage.setItem(balanceStorageKey(name), amount.toFixed(2));
+    return true;
+  } catch (error) {
+    console.warn("Unable to save starting balance:", error);
+    return false;
+  }
+}
+
+function validFuelPrices(record) {
+  if (!record || typeof record !== "object") return null;
+  const pump = Number(record.ron95 ?? record.pump);
+  const budi95 = Number(record.ron95_budi95 ?? record.budi95);
+  const skps = Number(record.ron95_skps ?? record.skps);
+  const date = String(record.date || "");
+  if (![pump, budi95, skps].every((n) => Number.isFinite(n) && n > 0 && n < 20)) return null;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || Number.isNaN(Date.parse(`${date}T00:00:00Z`))) return null;
+  return { pump, budi95, skps, date, source: "OpenDOSM official API" };
+}
+
+function readCachedFuelPrices() {
+  try {
+    const raw = localStorage.getItem(FUEL_PRICE_CACHE_KEY);
+    return raw ? validFuelPrices(JSON.parse(raw)) : null;
+  } catch (error) {
+    return null;
+  }
+}
+
+function cacheFuelPrices(prices) {
+  try {
+    localStorage.setItem(FUEL_PRICE_CACHE_KEY, JSON.stringify(prices));
+  } catch (error) {
+    console.warn("Could not cache fuel prices:", error);
+  }
+}
+
+function priceSummary(prices) {
+  return `RON95 ${money(prices.pump)}/L · BUDI95 ${money(prices.budi95)}/L · SKPS ${money(prices.skps)}/L`;
 }
 
 function today() {
@@ -195,6 +262,7 @@ async function serverRequest(action, extra = {}) {
 }
 
 async function loadServerProfile() {
+  if (!SERVER_STORAGE_ENABLED) return false;
   try {
     const data = await serverRequest("load");
     if (!Array.isArray(data.records)) return false;
@@ -213,6 +281,14 @@ async function loadServerProfile() {
 }
 
 async function syncRecordsToServer() {
+  if (!SERVER_STORAGE_ENABLED) {
+    const saved = saveLocalProfile();
+    els.saveStatus.textContent = saved
+      ? "Payment records saved in this browser."
+      : "Could not save locally. Check browser storage settings.";
+    els.saveStatus.className = saved ? "save-status success" : "save-status error";
+    return saved;
+  }
   try {
     await serverRequest("saveAll", { records: state.records });
     els.saveStatus.textContent = "Payment records saved on server.";
@@ -233,50 +309,55 @@ async function syncRecordsToServer() {
 /* ---------- Fuel price refresh: kept from your original feature ---------- */
 
 function normalizePriceRecord(record) {
-  return {
-    pump: Number(record.ron95) || FALLBACK_PRICES.pump,
-    budi95: Number(record.ron95_budi95) || FALLBACK_PRICES.budi95,
-    skps: Number(record.ron95_skps) || FALLBACK_PRICES.skps,
-    date: record.date || FALLBACK_PRICES.date,
-    source: "OpenDOSM official API",
-  };
+  const prices = validFuelPrices(record);
+  if (!prices) throw new Error("Price service returned invalid or incomplete fuel prices.");
+  return prices;
 }
 
 async function refreshPrices(showSuccess = false) {
-  els.priceStatus.textContent = "Checking latest official price...";
-
+  els.priceStatus.textContent = "Checking latest published official fuel prices...";
+  if (els.refreshPricesBtn) els.refreshPricesBtn.disabled = true;
   try {
     const response = await fetch(PRICE_API, { cache: "no-store" });
+    if (!response.ok) throw new Error(`Fuel price service returned HTTP ${response.status}.`);
+    const json = await response.json();
+    const records = Array.isArray(json) ? json : Array.isArray(json?.data) ? json.data : [];
+    const valid = records.map(validFuelPrices).filter(Boolean).sort((a,b) => b.date.localeCompare(a.date));
+    if (!valid.length) throw new Error("No complete fuel price record returned.");
 
-    if (!response.ok) {
-      throw new Error("Price service did not respond.");
-    }
-
-    const data = await response.json();
-    const latest = Array.isArray(data) ? data[0] : data?.data?.[0];
-
-    if (!latest) {
-      throw new Error("No latest price row was returned.");
-    }
-
-    state.prices = normalizePriceRecord(latest);
+    const newest = valid[0];
+    const cached = readCachedFuelPrices();
+    // Protect against an out-of-date API response replacing a newer saved record.
+    const prices = cached && cached.date > newest.date ? cached : newest;
+    state.prices = prices;
+    cacheFuelPrices(prices);
     updatePriceLabels();
-
-    els.priceStatus.textContent =
-      `${showSuccess ? "Updated. " : ""}Using official OpenDOSM prices effective ${state.prices.date}.`;
+    const prefix = prices.date > newest.date
+      ? "The API returned older data; retained newer cached official prices."
+      : (showSuccess ? "Prices refreshed. " : "");
+    els.priceStatus.textContent = `${prefix} Official rates effective ${prices.date}: ${priceSummary(prices)}.`;
   } catch (error) {
-    state.prices = { ...FALLBACK_PRICES };
+    console.warn("Official price refresh unavailable:", error);
+    const cached = readCachedFuelPrices();
+    if (cached) {
+      state.prices = cached;
+      els.priceStatus.textContent = `Could not refresh; using saved official rates effective ${cached.date}: ${priceSummary(cached)}.`;
+    } else {
+      // Do not call the 2026-08-27 fallback rates current or verified today.
+      state.prices = { ...FALLBACK_PRICES };
+      els.priceStatus.textContent = `Live price refresh unavailable. Using OLD fallback rates dated ${FALLBACK_PRICES.date}: ${priceSummary(state.prices)}. Check official prices before claiming.`;
+    }
     updatePriceLabels();
-    els.priceStatus.textContent =
-      "Using verified fallback prices for 27 Aug 2026 to 2 Sep 2026. Refresh when online.";
+  } finally {
+    if (els.refreshPricesBtn) els.refreshPricesBtn.disabled = false;
+    render();
   }
-
-  render();
 }
 
 function updatePriceLabels() {
   els.loginPumpPrice.textContent = `${money(state.prices.pump)}/L`;
   els.loginSubsidyPrice.textContent = `${money(state.prices.budi95)}/L`;
+  if (els.loginSKPSPrice) els.loginSKPSPrice.textContent = `${money(state.prices.skps)}/L`;
 }
 
 /* ---------- Calculations ---------- */
@@ -332,10 +413,10 @@ function balanceSnapshot(records) {
 
   const initialLitres =
     state.prices.budi95 > 0
-      ? INITIAL_BALANCE / state.prices.budi95
+      ? state.initialBalance / state.prices.budi95
       : 0;
 
-  const subsidyRemaining = INITIAL_BALANCE - total.subsidy;
+  const subsidyRemaining = state.initialBalance - total.subsidy;
   const litresRemaining =
     state.prices.budi95 > 0
       ? subsidyRemaining / state.prices.budi95
@@ -359,7 +440,7 @@ function render() {
   if (!state.userName) return;
 
   els.welcomeTitle.textContent = `Welcome back, ${state.userName}.`;
-  els.initialBalance.textContent = money(INITIAL_BALANCE);
+  els.initialBalance.textContent = money(state.initialBalance);
 
   const summary = balanceSnapshot(state.records);
 
@@ -542,6 +623,9 @@ function validateEntry() {
 
 async function enterProfile(userName, options = {}) {
   state.userName = userName;
+  state.initialBalance = readInitialBalance(userName);
+  if (els.balanceInput) els.balanceInput.value = state.initialBalance.toFixed(2);
+  if (els.balanceStatus) els.balanceStatus.textContent = "";
   state.records = readLocalProfile(state.userName);
 
   els.loginError.textContent = "";
@@ -559,9 +643,10 @@ async function enterProfile(userName, options = {}) {
   if (loadedFromServer) {
     render();
   } else {
-    els.saveStatus.textContent =
-      "Using browser records. Server storage will be retried when you save.";
-    els.saveStatus.className = "save-status warning";
+    els.saveStatus.textContent = SERVER_STORAGE_ENABLED
+      ? "Using browser records. Server storage will be retried when you save."
+      : "Your records are saved in this browser only (no cross-device sync).";
+    els.saveStatus.className = SERVER_STORAGE_ENABLED ? "save-status warning" : "save-status";
   }
 
   if (!options.skipPriceRefresh) {
@@ -580,6 +665,24 @@ els.loginForm.addEventListener("submit", async (event) => {
   }
 
   await enterProfile(result.value);
+});
+
+els.saveBalanceBtn?.addEventListener("click", () => {
+  const raw = els.balanceInput?.value?.trim() || "";
+  const value = Number(raw);
+  if (!raw || !Number.isFinite(value) || value < 0 || value > 100000 || !/^\d+(?:\.\d{1,2})?$/.test(raw)) {
+    els.balanceStatus.textContent = "Enter a balance from RM0 to RM100,000, with up to two decimals.";
+    return;
+  }
+  const rounded = Math.round(value * 100) / 100;
+  if (!persistInitialBalance(state.userName, rounded)) {
+    els.balanceStatus.textContent = "Couldn't save the balance in this browser.";
+    return;
+  }
+  state.initialBalance = rounded;
+  els.balanceInput.value = rounded.toFixed(2);
+  els.balanceStatus.textContent = `Starting balance saved: ${money(rounded)} (this browser).`;
+  render();
 });
 
 els.entryForm.addEventListener("submit", async (event) => {
@@ -712,6 +815,8 @@ document
   );
 
 els.dateInput.value = today();
+const cachedPrices = readCachedFuelPrices();
+if (cachedPrices) state.prices = cachedPrices;
 updatePriceLabels();
 
 const rememberedUser = localStorage.getItem(LAST_USER_KEY);

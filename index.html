@@ -7,7 +7,7 @@
   <title>Petrol Claim Tracker</title>
   <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
   <link rel="preconnect" href="https://api.data.gov.my" />
-  <link rel="stylesheet" href="./styles.css?v=6" />
+  <link rel="stylesheet" href="./styles.css?v=7" />
 </head>
 <body>
   <main class="shell">
@@ -35,6 +35,10 @@
           <div>
             <span>BUDI95</span>
             <strong id="loginSubsidyPrice">RM1.99/L</strong>
+          </div>
+          <div>
+            <span>SKPS</span>
+            <strong id="loginSKPSPrice">RM2.05/L</strong>
           </div>
         </div>
       </div>
@@ -70,6 +74,14 @@
           <span>Initial company balance</span>
           <strong id="initialBalance">RM300.00</strong>
           <small id="initialEntitlement">150.75 L entitlement</small>
+          <div class="balance-editor">
+            <label for="balanceInput">Change starting balance (RM)</label>
+            <div class="balance-editor-row">
+              <input id="balanceInput" type="number" min="0" max="100000" step="0.01" value="300.00" inputmode="decimal" />
+              <button id="saveBalanceBtn" type="button">Save</button>
+            </div>
+            <small id="balanceStatus" role="status" aria-live="polite"></small>
+          </div>
         </article>
 
         <article class="summary-card claim-card">
@@ -106,8 +118,8 @@
       <section class="claim-guide" aria-label="Claim guidance">
         <strong>For company claim:</strong>
         Use <b>Claim this amount</b> for the actual subsidised amount to claim from your company.
-        Your RM300 subsidy balance is converted to litres using BUDI95, and the remaining
-        litres are also shown at the current RON95 pump value.
+        Your selected starting balance is converted to litres using the latest available BUDI95 rate.
+        Remaining litres are also shown at the current RON95 pump value.
       </section>
 
       <section class="workspace">
@@ -197,13 +209,15 @@
         <h2>Current price source</h2>
         <p>
           Prices sync from Malaysia's official OpenDOSM fuel price API when available.
-          Fallback values use MOF/OpenDOSM data for 27 Aug 2026 to 2 Sep 2026:
-          RON95 pump RM3.82/L, BUDI95 RM1.99/L, SKPS RM2.05/L.
+          The "Refresh prices" button retrieves the latest published RON95, BUDI95 and SKPS rates.
+          If unavailable, the last successfully fetched official rates are used. With no saved rates,
+          the application displays its older August 2026 fallback with a clear warning.
+          Previously saved payment records without historical rate snapshots may be recalculated using the displayed rates.
         </p>
       </section>
     </section>
   </main>
 
-  <script src="./app.js?v=6"></script>
+  <script src="./app.js?v=7"></script>
 </body>
 </html>

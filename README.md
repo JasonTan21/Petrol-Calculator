@@ -7,14 +7,14 @@ The app lets a user sign in with only their name, keeps a RM300 starting balance
 ## Features
 
 - Name-based login with a remembered last profile
-- RM300 initial company balance
+- Per-user adjustable company starting balance (RM300 by default; saved in browser storage)
 - Add petrol payments for a selected date
 - Choose the price paid at: BUDI95, pump price, or SKPS
 - Edit, delete, and reset payment records
 - Payment preview before saving
 - Records saved in the browser with optional Apache/PHP server storage
-- Current RON95 price refresh from Malaysia's official OpenDOSM fuel price API
-- Verified fallback prices included when the API is unavailable
+- Refresh latest published RON95, BUDI95 and SKPS prices from the official OpenDOSM API (correct `sort=-date` parameter)
+- Cache the last successfully fetched official prices, with clear warning when only old fallback values are available
 - Responsive layout for desktop, tablet, and phone
 
 ## How To Use
@@ -104,3 +104,18 @@ The repository tracks `data/.gitkeep` and `data/.htaccess`, but ignores saved JS
 ## Public Domain
 
 This project is dedicated to the public domain under the CC0 1.0 Universal license. See `LICENSE` for details.
+
+## Cloudflare Workers static-asset deployment
+
+The `petrol.theusefulhacker.my` deployment runs entirely in the browser:
+
+- PHP `api.php` is **not deployed** to Workers.
+- Browser payment records and user-specific starting balances are saved in `localStorage`.
+- Records are not authenticated and **do not sync across devices**; do not use names as an access-control mechanism.
+- The "Refresh prices" button requests the newest weekly published fuel prices from OpenDOSM using `sort=-date`, and caches the last successful response.
+- Existing old records may be revalued when fuel prices change because the original app did not store historical prices per payment.
+- If the price API is unavailable and no official price was cached previously, the old 2026-08-27 fallback values are displayed with a warning—not as live prices.
+
+Deploy the four static files in `public/` (`index.html`, `app.js`, `styles.css`, and `favicon.svg`).
+
+Source: https://developer.data.gov.my/request-query and https://open.dosm.gov.my/data-catalogue/fuelprice
