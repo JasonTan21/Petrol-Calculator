@@ -7,7 +7,7 @@
   <title>Petrol Claim Tracker</title>
   <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
   <link rel="preconnect" href="https://api.data.gov.my" />
-  <link rel="stylesheet" href="./styles.css?v=10-mobile-fit" />
+  <link rel="stylesheet" href="./styles.css?v=11-compact-ios-date" />
 </head>
 <body>
   <main class="shell">
@@ -70,10 +70,12 @@
       </header>
 
       <section class="summary-grid" aria-label="Balance summary">
-        <article class="summary-card accent">
-          <span>Initial company balance</span>
-          <strong id="initialBalance">RM300.00</strong>
-          <small id="initialEntitlement">150.75 L entitlement</small>
+        <article class="summary-card accent balance-card">
+          <div class="balance-overview">
+            <span>Initial company balance</span>
+            <strong id="initialBalance">RM300.00</strong>
+            <small id="initialEntitlement">150.75 L estimated at BUDI95</small>
+          </div>
           <div class="balance-editor">
             <label for="balanceInput">Change starting balance (RM)</label>
             <div class="balance-editor-row">
@@ -87,20 +89,19 @@
         <article class="summary-card claim-card">
           <span>Claim this amount</span>
           <strong id="claimAmount">RM0.00</strong>
-          <small>Actual claim based on subsidised fuel value</small>
+          <small>Claim value of recorded petrol payments</small>
         </article>
 
         <article class="summary-card">
-          <span>Remaining at pump price</span>
+          <span>Pump-price equivalent</span>
           <strong id="pumpRemaining">RM575.88</strong>
-          <small id="pumpSpent">RM0.00 pump value used</small>
-          <small id="pumpBasisNote" class="calculation-basis">Based on estimated company litres at the BUDI95 rate, valued at the current RON95 pump price.</small>
+          <small id="pumpBasisNote">Est. company litres × RON95 pump rate</small>
         </article>
 
         <article class="summary-card">
           <span>Subsidy difference</span>
           <strong id="subsidyDifference">RM0.00</strong>
-          <small>Difference between pump value and subsidised value</small>
+          <small>Difference between pump and BUDI95 values</small>
         </article>
       </section>
 
@@ -154,7 +155,11 @@
 
           <div class="field-row">
             <label for="dateInput">Payment date</label>
-            <input id="dateInput" type="date" required />
+            <div class="date-picker-shell">
+              <span id="dateDisplay" class="date-picker-label" aria-hidden="true">Select payment date</span>
+              <svg class="date-picker-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M7 3v4M17 3v4M3 10h18"/></svg>
+              <input id="dateInput" type="date" required />
+            </div>
           </div>
 
           <div class="field-row">
@@ -238,6 +243,6 @@
     </section>
   </main>
 
-  <script src="./app.js?v=10-mobile-fit"></script>
+  <script src="./app.js?v=11-compact-ios-date"></script>
 </body>
 </html>

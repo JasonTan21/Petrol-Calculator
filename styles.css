@@ -694,3 +694,135 @@ tbody tr:last-child td { border-bottom:0; }
 @media (max-width: 420px) {
   .summary-grid { grid-template-columns: minmax(0, 1fr); }
 }
+
+
+/* COMPACT_KPIS_IOS_DATE_20261107 */
+/* The balance editor gets its own full-width banner. Smaller KPIs share a
+   separate row, so none inherits the editor's height. */
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  align-items: stretch;
+}
+.summary-grid > .summary-card {
+  height: auto;
+  min-width: 0;
+  align-self: stretch;
+  min-height: 0;
+  padding: 18px;
+  overflow-wrap: anywhere;
+}
+.summary-grid > .balance-card {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(270px, 400px);
+  align-items: center;
+  column-gap: 30px;
+  row-gap: 10px;
+  padding: 22px 24px;
+}
+.balance-overview { min-width: 0; }
+.summary-grid .balance-card .balance-editor {
+  min-width: 0;
+  margin: 0;
+  padding: 0 0 0 22px;
+  border-top: 0;
+  border-left: 1px solid rgba(255,255,255,.35);
+}
+.summary-grid > .summary-card:not(.balance-card) {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  gap: 4px;
+  min-height: 116px;
+}
+.summary-grid > .summary-card:not(.balance-card) strong { margin-top: 3px; }
+.summary-grid > .summary-card:not(.balance-card) small {
+  display: block;
+  margin-top: 1px;
+  line-height: 1.45;
+  font-size: .78rem;
+}
+.summary-grid > .summary-card .calculation-basis {
+  border: 0;
+  padding: 0;
+  margin: 1px 0 0;
+}
+
+/* Safari's date input can overflow even with width:100% and min-width:0.
+   An outer visible control supplies the dimensions while the native date
+   picker remains real, functional and keyboard/screen-reader accessible. */
+.entry-panel, .entry-panel .field-row { min-width: 0; }
+.entry-panel .field-row { width: 100%; max-width: 100%; }
+.date-picker-shell {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  box-sizing: border-box;
+  inline-size: 100%;
+  max-inline-size: 100%;
+  min-inline-size: 0;
+  block-size: 48px;
+  padding: 0 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: white;
+  color: var(--ink);
+  overflow: hidden;
+  cursor: pointer;
+}
+.date-picker-shell:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 4px rgba(0,107,91,.12);
+}
+.date-picker-label {
+  display: block;
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 16px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.date-picker-icon { flex: 0 0 19px; width: 19px; height: 19px; color: var(--muted); }
+.entry-panel .date-picker-shell #dateInput {
+  position: absolute !important;
+  inset: 0;
+  box-sizing: border-box;
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  height: 100%;
+  max-height: 100%;
+  margin: 0;
+  padding: 0;
+  opacity: 0;
+  cursor: pointer;
+  z-index: 1;
+  -webkit-appearance: auto;
+  appearance: auto;
+}
+@media (max-width: 960px) {
+  .summary-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+  .summary-grid > .balance-card { grid-template-columns: minmax(0, 1fr) minmax(220px, 42%); }
+  .entry-panel { min-width: 0; }
+  .date-picker-shell, .entry-panel #amountInput { box-sizing: border-box; inline-size: 100%; max-inline-size: 100%; min-inline-size: 0; }
+}
+@media (max-width: 740px) {
+  .summary-grid { grid-template-columns: minmax(0, 1fr); }
+  .summary-grid > .balance-card { grid-template-columns: minmax(0,1fr); padding: 18px; }
+  .summary-grid .balance-card .balance-editor {
+    border-left: 0;
+    border-top: 1px solid rgba(255,255,255,.35);
+    padding: 12px 0 0;
+  }
+  .summary-grid > .summary-card:not(.balance-card) { min-height: 0; padding: 16px; }
+  .entry-panel .date-picker-shell { block-size: 44px; }
+}
+@media (max-width: 420px) {
+  .summary-grid { grid-template-columns: minmax(0, 1fr); }
+  .entry-panel .date-picker-shell, .entry-panel #amountInput { width: 100%; max-width: 100%; }
+}

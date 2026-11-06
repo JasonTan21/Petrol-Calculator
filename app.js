@@ -47,6 +47,7 @@ const els = {
   entryFormTitle: document.querySelector("#entryFormTitle"),
   editingId: document.querySelector("#editingId"),
   dateInput: document.querySelector("#dateInput"),
+  dateDisplay: document.querySelector("#dateDisplay"),
   amountInput: document.querySelector("#amountInput"),
   entryError: document.querySelector("#entryError"),
   paymentPreview: document.querySelector("#paymentPreview"),
@@ -70,7 +71,6 @@ const els = {
   balanceStatus: document.querySelector("#balanceStatus"),
   initialEntitlement: document.querySelector("#initialEntitlement"),
   pumpRemaining: document.querySelector("#pumpRemaining"),
-  pumpSpent: document.querySelector("#pumpSpent"),
   pumpBasisNote: document.querySelector("#pumpBasisNote"),
   companyPriceMath: document.querySelector("#companyPriceMath"),
   claimAmount: document.querySelector("#claimAmount"),
@@ -228,6 +228,20 @@ function today() {
   const d = new Date();
   const local = new Date(d.getTime() - d.getTimezoneOffset() * 60000);
   return local.toISOString().slice(0, 10);
+}
+
+function updateDateDisplay() {
+  if (!els.dateDisplay || !els.dateInput) return;
+  const iso = els.dateInput.value;
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso);
+  if (!match) {
+    els.dateDisplay.textContent = "Select payment date";
+    return;
+  }
+  const date = new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3])));
+  els.dateDisplay.textContent = new Intl.DateTimeFormat("en-MY", {
+    day: "numeric", month: "short", year: "numeric", timeZone: "UTC"
+  }).format(date);
 }
 
 function getPaidRate() {
@@ -531,9 +545,8 @@ function render() {
 
   els.pumpRemaining.classList.toggle("negative", summary.litresRemaining < 0);
 
-  els.pumpSpent.textContent = `${money(summary.pump)} pump value used`;
   if (els.pumpBasisNote) {
-    els.pumpBasisNote.textContent = `Company litres estimated at BUDI95 ${pricePerLitre(state.prices.budi95)}; valued at RON95 pump ${pricePerLitre(state.prices.pump)}.`;
+    els.pumpBasisNote.textContent = `${litres(summary.litresRemaining)} × RON95 ${pricePerLitre(state.prices.pump)}`;
   }
   if (els.companyPriceMath) {
     els.companyPriceMath.textContent = `Est. company litres left = ${money(summary.subsidyRemaining)} remaining company balance ÷ BUDI95 ${pricePerLitre(state.prices.budi95)} = ${litres(summary.litresRemaining)}. Pump-price equivalent uses RON95 ${pricePerLitre(state.prices.pump)}. This is separate from the government 300 L monthly BUDI95 allowance.`;
@@ -660,6 +673,7 @@ function clearEntryForm() {
   els.editingId.value = "";
   els.entryFormTitle.textContent = "Add petrol payment";
   els.dateInput.value = today();
+  updateDateDisplay();
   els.amountInput.value = "";
   setPaidRate("budi95");
   els.entryError.textContent = "";
@@ -846,6 +860,7 @@ els.recordsBody.addEventListener("click", async (event) => {
     els.editingId.value = record.id;
     els.entryFormTitle.textContent = "Edit petrol payment";
     els.dateInput.value = record.date;
+    updateDateDisplay();
     els.amountInput.value = Number(record.amount).toFixed(2);
     setPaidRate(record.rateType);
     els.cancelEditBtn.classList.remove("hidden");
@@ -909,6 +924,19 @@ document
   );
 
 els.dateInput.value = today();
+updateDateDisplay();
+els.dateInput.addEventListener("change", () => {
+  updateDateDisplay();
+  updatePaymentPreview();
+});
+els.dateInput.addEventListener("input", updateDateDisplay);
+// A real native date input overlays the visible date control. Keep iOS/desktop
+// date-picker behaviour, and use showPicker when supported on a direct click.
+document.querySelector(".date-picker-shell")?.addEventListener("click", () => {
+  if (typeof els.dateInput.showPicker === "function") {
+    try { els.dateInput.showPicker(); } catch (_) { /* browser default picker */ }
+  }
+});
 const cachedPrices = readCachedFuelPrices();
 if (cachedPrices) state.prices = cachedPrices;
 updatePriceLabels();
