@@ -7,7 +7,7 @@
   <title>Petrol Claim Tracker</title>
   <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
   <link rel="preconnect" href="https://api.data.gov.my" />
-  <link rel="stylesheet" href="./styles.css?v=11-compact-ios-date" />
+  <link rel="stylesheet" href="./styles.css?v=12-remove-claim-guide" />
 </head>
 <body>
   <main class="shell">
@@ -134,16 +134,6 @@
         </p>
       </section>
 
-      <section class="claim-guide" aria-label="Claim guidance">
-        <strong>For company claim:</strong>
-        Your editable <b>initial company balance (RM)</b> is the starting point for the
-        company claim calculations. The <b>estimated litres left (company)</b> shown in
-        payment records is based on the remaining RM balance divided by the BUDI95 rate.
-        The separate monthly BUDI95 tracker is an estimate of government quota usage and
-        does not change your company balance.
-        <span id="companyPriceMath" class="calculation-basis" aria-live="polite">Company litres are calculated using the current BUDI95 price, not the RON95 pump price.</span>
-      </section>
-
       <section class="workspace">
         <form id="entryForm" class="entry-panel" novalidate>
           <div class="panel-title">
@@ -243,6 +233,6 @@
     </section>
   </main>
 
-  <script src="./app.js?v=11-compact-ios-date"></script>
+  <script src="./app.js?v=12-remove-claim-guide"></script>
 </body>
 </html>

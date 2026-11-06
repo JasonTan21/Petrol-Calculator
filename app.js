@@ -72,7 +72,6 @@ const els = {
   initialEntitlement: document.querySelector("#initialEntitlement"),
   pumpRemaining: document.querySelector("#pumpRemaining"),
   pumpBasisNote: document.querySelector("#pumpBasisNote"),
-  companyPriceMath: document.querySelector("#companyPriceMath"),
   claimAmount: document.querySelector("#claimAmount"),
   subsidyDifference: document.querySelector("#subsidyDifference"),
 };
@@ -547,9 +546,6 @@ function render() {
 
   if (els.pumpBasisNote) {
     els.pumpBasisNote.textContent = `${litres(summary.litresRemaining)} × RON95 ${pricePerLitre(state.prices.pump)}`;
-  }
-  if (els.companyPriceMath) {
-    els.companyPriceMath.textContent = `Est. company litres left = ${money(summary.subsidyRemaining)} remaining company balance ÷ BUDI95 ${pricePerLitre(state.prices.budi95)} = ${litres(summary.litresRemaining)}. Pump-price equivalent uses RON95 ${pricePerLitre(state.prices.pump)}. This is separate from the government 300 L monthly BUDI95 allowance.`;
   }
 
   els.claimAmount.textContent = money(summary.subsidy);
