@@ -7,7 +7,7 @@
   <title>Petrol Claim Tracker</title>
   <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
   <link rel="preconnect" href="https://api.data.gov.my" />
-  <link rel="stylesheet" href="./styles.css?v=7" />
+  <link rel="stylesheet" href="./styles.css?v=8" />
 </head>
 <body>
   <main class="shell">
@@ -115,6 +115,35 @@
         </article>
       </section>
 
+      <section class="budi-quota-panel" aria-labelledby="budiQuotaTitle">
+        <div class="budi-quota-header">
+          <div>
+            <p class="eyebrow">BUDI MADANI RON95</p>
+            <h2 id="budiQuotaTitle">Monthly subsidised fuel allowance</h2>
+            <small id="budiQuotaMonth">Current month</small>
+          </div>
+          <strong class="budi-quota-cap" id="budiQuotaLimit">300 L</strong>
+        </div>
+        <div class="budi-quota-grid">
+          <div class="budi-quota-stat">
+            <span>Logged BUDI95 litres used</span>
+            <strong id="budiQuotaUsed">0.00 L</strong>
+          </div>
+          <div class="budi-quota-stat">
+            <span>Estimated litres remaining</span>
+            <strong id="budiQuotaRemaining">300.00 L</strong>
+          </div>
+        </div>
+        <div id="budiQuotaMeter" class="budi-quota-meter" role="progressbar"
+          aria-label="Estimated BUDI95 used this month" aria-valuemin="0"
+          aria-valuemax="300" aria-valuenow="0">
+          <div id="budiQuotaFill"></div>
+        </div>
+        <p id="budiQuotaNote" class="budi-quota-note">
+          Estimated from BUDI95 entries saved in this browser, not the official government balance.
+        </p>
+      </section>
+
       <section class="claim-guide" aria-label="Claim guidance">
         <strong>For company claim:</strong>
         Use <b>Claim this amount</b> for the actual subsidised amount to claim from your company.
@@ -218,6 +247,6 @@
     </section>
   </main>
 
-  <script src="./app.js?v=7"></script>
+  <script src="./app.js?v=8"></script>
 </body>
 </html>

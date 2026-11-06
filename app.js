@@ -1,4 +1,7 @@
 const DEFAULT_INITIAL_BALANCE = 300;
+// Basic BUDI95 entitlement was restored to 300 L/month on 2026-09-01.
+// This tracks only receipts entered here. It is NOT the official MyKad balance.
+const BUDI95_MONTHLY_LITRE_CAP = 300;
 const BALANCE_STORAGE_PREFIX = "petrol-claim-tracker:starting-balance:";
 const FUEL_PRICE_CACHE_KEY = "petrol-claim-tracker:last-official-prices";
 // This Cloudflare Workers deployment uses browser-only records. No unauthenticated PHP API.
@@ -55,6 +58,13 @@ const els = {
   resetBtn: document.querySelector("#resetBtn"),
 
   initialBalance: document.querySelector("#initialBalance"),
+  budiQuotaMonth: document.querySelector("#budiQuotaMonth"),
+  budiQuotaLimit: document.querySelector("#budiQuotaLimit"),
+  budiQuotaUsed: document.querySelector("#budiQuotaUsed"),
+  budiQuotaRemaining: document.querySelector("#budiQuotaRemaining"),
+  budiQuotaMeter: document.querySelector("#budiQuotaMeter"),
+  budiQuotaFill: document.querySelector("#budiQuotaFill"),
+  budiQuotaNote: document.querySelector("#budiQuotaNote"),
   balanceInput: document.querySelector("#balanceInput"),
   saveBalanceBtn: document.querySelector("#saveBalanceBtn"),
   balanceStatus: document.querySelector("#balanceStatus"),
@@ -151,6 +161,71 @@ function priceSummary(prices) {
   return `RON95 ${money(prices.pump)}/L · BUDI95 ${money(prices.budi95)}/L · SKPS ${money(prices.skps)}/L`;
 }
 
+function budiMonthlyLimit(isoDate) {
+  const month = String(isoDate || "").slice(0, 7);
+  // Historical MOF reduction applied 1 Apr to 31 Aug 2026.
+  return month >= "2026-04" && month <= "2026-08" ? 200 : BUDI95_MONTHLY_LITRE_CAP;
+}
+
+function budiLitresForRecord(record) {
+  if (!record || record.rateType !== "budi95") return 0;
+  const amount = Number(record.amount);
+  const snapshotRate = Number(record.paidPricePerLitre);
+  const paidRate = Number.isFinite(snapshotRate) && snapshotRate > 0
+    ? snapshotRate : state.prices.budi95;
+  return Number.isFinite(amount) && amount > 0 && paidRate > 0
+    ? amount / paidRate : 0;
+}
+
+function loggedBudiLitresForMonth(month, records = state.records) {
+  return records.reduce((total, record) => {
+    return String(record.date || "").slice(0, 7) === month
+      ? total + budiLitresForRecord(record) : total;
+  }, 0);
+}
+
+function budiMonthLabel(month) {
+  const parts = month.split("-").map(Number);
+  return new Intl.DateTimeFormat("en-MY", { month: "long", year: "numeric", timeZone: "UTC" })
+    .format(new Date(Date.UTC(parts[0], parts[1] - 1, 1)));
+}
+
+function renderBudiQuota() {
+  if (!els.budiQuotaRemaining) return;
+  const month = today().slice(0, 7);
+  const limit = budiMonthlyLimit(month);
+  const used = loggedBudiLitresForMonth(month);
+  const remaining = Math.max(0, limit - used);
+  const overLimit = used > limit + 0.001;
+  els.budiQuotaMonth.textContent = budiMonthLabel(month);
+  els.budiQuotaLimit.textContent = `${limit} L`;
+  els.budiQuotaUsed.textContent = litres(used);
+  els.budiQuotaRemaining.textContent = litres(remaining);
+  els.budiQuotaRemaining.classList.toggle("negative", overLimit);
+  els.budiQuotaFill.style.width = `${Math.min(100, Math.max(0, used / limit * 100))}%`;
+  els.budiQuotaMeter.setAttribute("aria-valuemax", String(limit));
+  els.budiQuotaMeter.setAttribute("aria-valuenow", String(Math.min(limit, Math.round(used * 100) / 100)));
+  const hasLegacy = state.records.some((record) =>
+    record.rateType === "budi95" && String(record.date || "").startsWith(month) &&
+    !(Number(record.paidPricePerLitre) > 0));
+  els.budiQuotaNote.textContent = overLimit
+    ? "Logged BUDI95 receipts exceed the basic monthly limit. Check eligibility and actual pump transactions."
+    : hasLegacy
+      ? "Estimated from this browser's BUDI95 receipts; older entries use the currently shown price. Not an official quota balance."
+      : "Estimated from BUDI95 receipts saved in this browser only, not the government's actual entitlement balance.";
+}
+
+function chosenPaymentRate() {
+  const selectedType = getPaidRate();
+  const editingId = els.editingId?.value || "";
+  const existing = editingId ? state.records.find((record) => record.id === editingId) : null;
+  if (existing && existing.rateType === selectedType &&
+      Number(existing.paidPricePerLitre) > 0) {
+    return Number(existing.paidPricePerLitre);
+  }
+  return state.prices[selectedType] || state.prices.budi95;
+}
+
 function today() {
   const d = new Date();
   const local = new Date(d.getTime() - d.getTimezoneOffset() * 60000);
@@ -194,6 +269,11 @@ function normalizeSavedRecord(record, index) {
     date: cleanDate,
     amount: Math.round(amount * 100) / 100,
     rateType,
+    // For NEW receipts, preserve the rate at the time of logging.
+    // Legacy receipts have no saved price and remain approximate.
+    paidPricePerLitre: Number.isFinite(Number(record.paidPricePerLitre)) &&
+      Number(record.paidPricePerLitre) > 0 && Number(record.paidPricePerLitre) < 20
+        ? Number(record.paidPricePerLitre) : null,
     createdAt: record.createdAt || new Date().toISOString(),
     updatedAt: record.updatedAt || null,
   };
@@ -371,7 +451,9 @@ function rateLabel(rateType) {
 }
 
 function recordMath(record) {
-  const paidRate = state.prices[record.rateType] || state.prices.budi95;
+  const snapshotRate = Number(record.paidPricePerLitre);
+  const paidRate = Number.isFinite(snapshotRate) && snapshotRate > 0
+    ? snapshotRate : (state.prices[record.rateType] || state.prices.budi95);
   const amount = Number(record.amount) || 0;
   const volume = paidRate > 0 ? amount / paidRate : 0;
 
@@ -445,7 +527,7 @@ function render() {
   const summary = balanceSnapshot(state.records);
 
   els.initialEntitlement.textContent =
-    `${litres(summary.initialLitres)} entitlement at ${pricePerLitre(state.prices.budi95)}`;
+    `${litres(summary.initialLitres)} estimated from company balance at ${pricePerLitre(state.prices.budi95)}`;
 
   els.pumpRemaining.textContent = money(summary.pumpRemaining);
   els.subsidyRemaining.textContent = money(summary.subsidyRemaining);
@@ -462,6 +544,7 @@ function render() {
   els.claimAmount.textContent = money(summary.subsidy);
   els.subsidyDifference.textContent = money(summary.subsidyDifference);
 
+  renderBudiQuota();
   renderRecords();
   updatePaymentPreview();
 }
@@ -542,7 +625,7 @@ function updatePaymentPreview() {
   }
 
   const rateType = getPaidRate();
-  const paidRate = state.prices[rateType] || state.prices.budi95;
+  const paidRate = chosenPaymentRate();
   const volume = amount / paidRate;
   const subsidyUsed = volume * state.prices.budi95;
 
@@ -559,6 +642,21 @@ function updatePaymentPreview() {
     <b>${litres(litresLeft)}</b>,
     <b>${money(pumpLeft)}</b> pump value left.
   `;
+  if (rateType === "budi95") {
+    const month = String(els.dateInput.value || today()).slice(0, 7);
+    const limit = budiMonthlyLimit(month);
+    const editingId = els.editingId?.value || "";
+    const previous = state.records.filter((record) => record.id !== editingId);
+    const estimatedAfter = loggedBudiLitresForMonth(month, previous) + volume;
+    const left = Math.max(0, limit - estimatedAfter);
+    const note = estimatedAfter > limit + 0.001
+      ? "Warning: this would exceed the basic monthly BUDI95 allowance. Confirm your actual entitlement."
+      : `Estimated remaining BUDI95 quota for ${budiMonthLabel(month)}: ${litres(left)} of ${limit} L.`;
+    const line = document.createElement("p");
+    line.className = "budi-preview-note";
+    line.textContent = note;
+    els.paymentPreview.appendChild(line);
+  }
 }
 
 /* ---------- Forms ---------- */
@@ -615,6 +713,7 @@ function validateEntry() {
       date,
       amount: Math.round(amount * 100) / 100,
       rateType: getPaidRate(),
+      paidPricePerLitre: chosenPaymentRate(),
     },
   };
 }
@@ -818,6 +917,16 @@ els.dateInput.value = today();
 const cachedPrices = readCachedFuelPrices();
 if (cachedPrices) state.prices = cachedPrices;
 updatePriceLabels();
+
+// Refresh the BUDI95 panel if the current month changes while the app stays open.
+let lastBudiQuotaMonth = today().slice(0, 7);
+setInterval(() => {
+  const thisMonth = today().slice(0, 7);
+  if (thisMonth !== lastBudiQuotaMonth) {
+    lastBudiQuotaMonth = thisMonth;
+    if (state.userName) renderBudiQuota();
+  }
+}, 60000);
 
 const rememberedUser = localStorage.getItem(LAST_USER_KEY);
 if (rememberedUser) {

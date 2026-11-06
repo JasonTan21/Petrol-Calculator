@@ -496,3 +496,54 @@ tbody tr:last-child td { border-bottom:0; }
   .price-strip div { min-width:0; padding:10px 8px; }
   .price-strip strong { font-size:clamp(.85rem,3.4vw,1.3rem); overflow-wrap:anywhere; }
 }
+
+
+/* BUDI95 monthly estimator — visually aligned with the existing dashboard */
+.budi-quota-panel {
+  min-width:0; padding:20px; border:1px solid var(--line);
+  border-radius:8px; background:var(--surface, #fff); box-shadow:var(--shadow, none);
+}
+.budi-quota-header { display:flex; align-items:center; justify-content:space-between; gap:16px; }
+.budi-quota-header h2 { margin:4px 0 5px; font-size:1.26rem; }
+.budi-quota-header small, .budi-quota-note { color:var(--muted); }
+.budi-quota-cap { color:var(--accent-strong); font-size:1.55rem; white-space:nowrap; }
+.budi-quota-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px; margin-top:16px; }
+.budi-quota-stat { min-width:0; padding:14px; border-radius:8px; background:var(--accent-soft); }
+.budi-quota-stat span { display:block; color:var(--muted); font-size:.82rem; }
+.budi-quota-stat strong { display:block; margin-top:5px; font-size:1.25rem; overflow-wrap:anywhere; }
+.budi-quota-meter { height:10px; margin-top:16px; border-radius:99px; overflow:hidden; background:#dbe6e3; }
+#budiQuotaFill { height:100%; width:0; background:var(--accent); border-radius:99px; transition:width .2s ease; }
+.budi-quota-note { margin:12px 0 0; font-size:.82rem; line-height:1.55; }
+.budi-preview-note { margin:10px 0 0; padding-top:10px; border-top:1px solid #cfe4dc; font-weight:700; }
+
+/* Keep spacing and column edges consistent across smaller phone layouts. */
+@media (max-width:680px) {
+  .shell { width:calc(100% - 24px); max-width:100%; padding:12px 0 22px; }
+  .login-view, .app-view, .workspace, .summary-grid { gap:12px; }
+  .app-header { gap:12px; padding:12px 0 2px; }
+  .header-actions, .form-actions, .row-actions { gap:10px; }
+  .brand-panel, .login-card, .entry-panel, .records-panel, .source-note,
+  .claim-guide, .summary-card, .budi-quota-panel { padding:16px; box-sizing:border-box; }
+  .brand-panel { padding:18px 16px; }
+  .summary-card, .budi-quota-panel, .login-card, .entry-panel, .records-panel { min-width:0; }
+  .price-strip { gap:12px; margin-top:18px; }
+  .price-strip div { padding:12px; min-width:0; }
+  .field-row { margin-top:12px; }
+  .rate-picker { margin-top:12px; }
+  .rate-picker label { margin:8px 0; }
+  .payment-preview { margin-top:12px; }
+  .table-wrap { margin-top:12px; max-width:100%; overflow-x:auto; }
+  .budi-quota-panel { border-radius:12px; }
+  .budi-quota-header { gap:12px; }
+  .budi-quota-grid { gap:12px; margin-top:12px; }
+  .budi-quota-stat { padding:12px; }
+  .budi-quota-meter { margin-top:12px; }
+  .balance-editor-row { gap:10px; }
+  input, button { max-width:100%; }
+}
+@media (max-width:420px) {
+  .budi-quota-grid { grid-template-columns:1fr; }
+  .budi-quota-header { align-items:flex-start; }
+  .budi-quota-cap { font-size:1.32rem; }
+  .summary-grid { grid-template-columns:1fr; }
+}

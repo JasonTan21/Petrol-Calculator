@@ -119,3 +119,20 @@ The `petrol.theusefulhacker.my` deployment runs entirely in the browser:
 Deploy the four static files in `public/` (`index.html`, `app.js`, `styles.css`, and `favicon.svg`).
 
 Source: https://developer.data.gov.my/request-query and https://open.dosm.gov.my/data-catalogue/fuelprice
+
+
+## BUDI MADANI RON95 monthly quota (November 2026 update)
+
+- Basic BUDI95 allowance for eligible Malaysian users: **300 litres per calendar month**, effective from 1 September 2026 (restored from 200 L).
+- Historical April–August 2026 entries use the 200 L monthly basic limit; other tracked months use 300 L until policy changes.
+- The app **does not connect to any government BUDI95 account**. It only estimates remaining allowance using **BUDI95-labelled receipts entered in this browser**.
+- Pump-price and SKPS purchases are *not* counted as BUDI95 entitlement use.
+- Newly entered receipts save the paid RM/L rate to keep litres accurate after refresh; older receipts without a snapshot are estimated using the currently displayed BUDI95 rate.
+- The company starting cash balance (RM, editable per user) is **separate** from the 300 L government subsidy allowance.
+- The monthly quota display rolls to the new calendar month automatically (old records remain available in history).
+- If recorded usage goes over the monthly cap, the app warns the user; it does not claim to verify eligibility, handle partial-subsidy pump transactions or automatically switch prices.
+
+MOF announcement (31 Aug 2026):
+https://www.mof.gov.my/portal/ms/berita/siaran-media/had-kelayakan-asas-bulanan-budi-madani-dinaikkan-semula-kepada-300-liter-mulai-1-september-2026
+
+The responsive CSS also aligns mobile dashboard cards, field gaps, navigation buttons, and the monthly BUDI95 panel with consistent spacing.
