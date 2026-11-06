@@ -1,9 +1,18 @@
-# Petrol Claim Tracker
+#⛽️ Petrol Claim Tracker
 
-A responsive Malaysia RON95 petrol-payment calculator for tracking petrol receipts, estimating company claim values, and reviewing BUDI95 usage. Built with HTML, CSS and JavaScript; the live website is deployed using **Cloudflare Workers Static Assets**.
+A responsive Malaysia RON95 petrol-payment calculator for tracking petrol receipts, estimating company claim values, and reviewing BUDI95 usage. Built with HTML, CSS and JavaScript.
 
-**Live website:** https://petrol.theusefulhacker.my/  
-**Source code:** https://github.com/JasonTan21/Petrol-Calculator
+**Live:** https://petrol.theusefulhacker.my
+
+## Getting started
+
+1. Open https://petrol.theusefulhacker.my
+2. Enter a name to open a browser-local profile. This is **not a secure login**; entering a name does not authenticate an identity.
+3. Adjust your starting company balance if needed and click **Save**.
+4. Under **Add petrol payment**, choose a payment date, input the amount paid, and select the price type.
+5. Save the receipt. The dashboard and **Payment records** update immediately.
+6. Use **Edit**, **Delete**, or **Reset user data** as needed. Resetting records can be destructive.
+7. Use **Refresh prices** to attempt an update from the published dataset.
 
 ## Features
 
@@ -66,54 +75,9 @@ If the API is unavailable, the app uses the last successfully cached rates. If n
 
 Source: [OpenDOSM Fuel Price Data](https://open.dosm.gov.my/data-catalogue/fuelprice).
 
-## Getting started
-
-1. Open https://petrol.theusefulhacker.my/.
-2. Enter a name to open a browser-local profile. This is **not a secure login**; entering a name does not authenticate an identity.
-3. Adjust your starting company balance if needed and click **Save**.
-4. Under **Add petrol payment**, choose a payment date, input the amount paid, and select the price type.
-5. Save the receipt. The dashboard and **Payment records** update immediately.
-6. Use **Edit**, **Delete**, or **Reset user data** as needed. Resetting records can be destructive.
-7. Use **Refresh prices** to attempt an update from the published dataset.
-
 ### Browser data caution
 
 The live Workers version stores records and starting balances in `localStorage`. Data is specific to the browser/device and can be erased by clearing site data. **Keep your own backups of important claim receipts.** Do not use the name field as a security or access-control boundary.
-
-## Technology
-
-- HTML5, CSS3, vanilla JavaScript
-- Browser `localStorage`
-- OpenDOSM fuel-price API
-- Cloudflare Workers with Static Assets
-- GitHub-based deployments
-
-The repository also includes optional PHP files (`api.php`, `server-test.php`, and `data/`) for a different, PHP-capable hosting setup. **The deployed Cloudflare Worker does not execute PHP and does not expose those endpoints.**
-
-## Deployment (Cloudflare Workers)
-
-The production Worker publishes only these static assets:
-
-```text
-index.html
-app.js
-styles.css
-favicon.svg
-```
-
-The configured Cloudflare build copies those files into `public/`:
-
-```bash
-mkdir -p public && cp index.html app.js styles.css favicon.svg public/
-```
-
-The Worker deploys those static files, and the custom domain points to the production Worker. A push to the connected `main` branch normally triggers deployment. Changes to GitHub do not modify old `localStorage` records.
-
-To validate the frontend locally (with Node.js installed):
-
-```bash
-node --check app.js
-```
 
 ## Privacy and limitations
 
