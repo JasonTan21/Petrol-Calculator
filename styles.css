@@ -547,3 +547,58 @@ tbody tr:last-child td { border-bottom:0; }
   .budi-quota-cap { font-size:1.32rem; }
   .summary-grid { grid-template-columns:1fr; }
 }
+
+/* Simplified company dashboard: four evenly aligned cards on desktop. */
+.summary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+
+/* Keep the date input inside the Add petrol payment panel on phones.
+   Safari date controls have an intrinsic minimum width, so shrinking only the
+   form or hiding overflow isn't enough. */
+@media (max-width: 960px) {
+  .app-view,
+  .workspace {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .shell,
+  .app-view,
+  .workspace,
+  .entry-panel,
+  .entry-panel .field-row,
+  .entry-panel .rate-picker,
+  .entry-panel .form-actions {
+    min-width: 0;
+    max-width: 100%;
+  }
+  .entry-panel {
+    width: 100%;
+    overflow: visible;
+    scrollbar-gutter: auto;
+  }
+  .entry-panel .field-row { width: 100%; }
+  .entry-panel input[type="date"],
+  .entry-panel input[type="number"] {
+    display: block;
+    box-sizing: border-box;
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+  }
+  .entry-panel input[type="date"]::-webkit-date-and-time-value {
+    min-width: 0;
+    text-align: left;
+  }
+  .entry-panel input[type="date"]::-webkit-datetime-edit {
+    min-width: 0;
+    max-width: 100%;
+  }
+  .entry-panel .payment-preview { overflow-wrap: anywhere; }
+}
+@media (max-width: 680px) {
+  .entry-panel { padding: 16px; }
+  .entry-panel .field-row label,
+  .entry-panel .rate-picker legend { max-width: 100%; }
+  .entry-panel .form-actions { width: 100%; }
+}
+@media (max-width: 420px) {
+  .summary-grid { grid-template-columns: minmax(0, 1fr); }
+}

@@ -7,7 +7,7 @@
   <title>Petrol Claim Tracker</title>
   <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
   <link rel="preconnect" href="https://api.data.gov.my" />
-  <link rel="stylesheet" href="./styles.css?v=8" />
+  <link rel="stylesheet" href="./styles.css?v=9-simple" />
 </head>
 <body>
   <main class="shell">
@@ -97,18 +97,6 @@
         </article>
 
         <article class="summary-card">
-          <span>Remaining at subsidised price</span>
-          <strong id="subsidyRemaining">RM300.00</strong>
-          <small id="subsidySpent">RM0.00 subsidy used</small>
-        </article>
-
-        <article class="summary-card">
-          <span>Litres remaining</span>
-          <strong id="litresRemaining">150.75 L</strong>
-          <small id="litresSpent">0.00 L used</small>
-        </article>
-
-        <article class="summary-card">
           <span>Subsidy difference</span>
           <strong id="subsidyDifference">RM0.00</strong>
           <small>Difference between pump value and subsidised value</small>
@@ -146,9 +134,11 @@
 
       <section class="claim-guide" aria-label="Claim guidance">
         <strong>For company claim:</strong>
-        Use <b>Claim this amount</b> for the actual subsidised amount to claim from your company.
-        Your selected starting balance is converted to litres using the latest available BUDI95 rate.
-        Remaining litres are also shown at the current RON95 pump value.
+        Your editable <b>initial company balance (RM)</b> is the starting point for the
+        company claim calculations. The <b>estimated litres left (company)</b> shown in
+        payment records is based on the remaining RM balance divided by the BUDI95 rate.
+        The separate monthly BUDI95 tracker is an estimate of government quota usage and
+        does not change your company balance.
       </section>
 
       <section class="workspace">
@@ -218,8 +208,7 @@
                   <th>Litres</th>
                   <th>Claim at pump price</th>
                   <th>Subsidised</th>
-                  <th>Subsidy left</th>
-                  <th>Litres left</th>
+                  <th>Est. litres left (company)</th>
                   <th>Pump value left</th>
                   <th>Subsidy diff.</th>
                   <th>Actions</th>
@@ -247,6 +236,6 @@
     </section>
   </main>
 
-  <script src="./app.js?v=8"></script>
+  <script src="./app.js?v=9-simple"></script>
 </body>
 </html>

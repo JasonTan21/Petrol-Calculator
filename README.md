@@ -2,7 +2,7 @@
 
 A friendly Malaysia RON95 petrol calculator for recording petrol payments and preparing company claim figures.
 
-The app lets a user sign in with only their name, keeps a RM300 starting balance, records petrol payments by date, and calculates litres, subsidised value, current RON95 pump value, remaining balance, and subsidy difference.
+The app allows name-based profiles, an adjustable company starting balance (RM300 by default), dated petrol payment records, claim estimates, remaining pump-price value, and estimated company litres left per record. It separately tracks the estimated monthly BUDI95 litre allowance from logged receipts.
 
 ## Features
 
@@ -26,11 +26,11 @@ The app lets a user sign in with only their name, keeps a RM300 starting balance
    - Enter the amount paid in RM.
    - Select whether you paid using BUDI95, pump price, or SKPS.
 4. Review the dashboard:
-   - `Claim this amount` shows the actual subsidised amount used from the RM300 balance.
-   - `Remaining at subsidised price` shows how much of the RM300 subsidised balance is left.
-   - `Litres remaining` converts the remaining subsidised balance into litres.
+   - `Claim this amount` shows the BUDI95-equivalent value used against the adjustable company starting balance.
    - `Remaining at pump price` shows the pump-price value of the remaining litres.
    - `Subsidy difference` shows the difference between pump value and subsidised value.
+   - `Estimated litres left (company)` in payment records reflects your remaining company RM balance divided by the displayed BUDI95 price. It is not your actual government quota.
+   - The separate BUDI95 panel estimates monthly government litre allowance usage from the BUDI95 receipts you logged.
 5. Use `Edit` or `Delete` beside any payment record if a receipt was entered wrongly.
 6. Use `Reset user data` only when you want to clear all records for the current user.
 
@@ -39,7 +39,7 @@ The app lets a user sign in with only their name, keeps a RM300 starting balance
 The app tries to refresh prices from Malaysia's official OpenDOSM fuel price API:
 
 ```text
-https://api.data.gov.my/data-catalogue?id=fuelprice&limit=1&sort=date:desc
+https://api.data.gov.my/data-catalogue?id=fuelprice&limit=5&sort=-date
 ```
 
 If the API cannot be reached, the app uses verified fallback values for 27 Aug 2026 to 2 Sep 2026:

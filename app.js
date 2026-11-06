@@ -71,10 +71,6 @@ const els = {
   initialEntitlement: document.querySelector("#initialEntitlement"),
   pumpRemaining: document.querySelector("#pumpRemaining"),
   pumpSpent: document.querySelector("#pumpSpent"),
-  subsidyRemaining: document.querySelector("#subsidyRemaining"),
-  subsidySpent: document.querySelector("#subsidySpent"),
-  litresRemaining: document.querySelector("#litresRemaining"),
-  litresSpent: document.querySelector("#litresSpent"),
   claimAmount: document.querySelector("#claimAmount"),
   subsidyDifference: document.querySelector("#subsidyDifference"),
 };
@@ -530,16 +526,10 @@ function render() {
     `${litres(summary.initialLitres)} estimated from company balance at ${pricePerLitre(state.prices.budi95)}`;
 
   els.pumpRemaining.textContent = money(summary.pumpRemaining);
-  els.subsidyRemaining.textContent = money(summary.subsidyRemaining);
-  els.litresRemaining.textContent = litres(summary.litresRemaining);
 
   els.pumpRemaining.classList.toggle("negative", summary.litresRemaining < 0);
-  els.subsidyRemaining.classList.toggle("negative", summary.subsidyRemaining < 0);
-  els.litresRemaining.classList.toggle("negative", summary.litresRemaining < 0);
 
   els.pumpSpent.textContent = `${money(summary.pump)} pump value used`;
-  els.subsidySpent.textContent = `${money(summary.subsidy)} subsidy used`;
-  els.litresSpent.textContent = `${litres(summary.litres)} used`;
 
   els.claimAmount.textContent = money(summary.subsidy);
   els.subsidyDifference.textContent = money(summary.subsidyDifference);
@@ -586,10 +576,7 @@ function renderRecords() {
       <td data-label="Litres">${litres(calc.volume)}</td>
       <td data-label="Pump value">${money(calc.pumpValue)}</td>
       <td data-label="Subsidised">${money(calc.subsidyValue)}</td>
-      <td data-label="Subsidy left" class="${balance.subsidyRemaining < 0 ? "negative" : ""}">
-        ${money(balance.subsidyRemaining)}
-      </td>
-      <td data-label="Litres left" class="${balance.litresRemaining < 0 ? "negative" : ""}">
+      <td data-label="Est. litres left (company)" class="${balance.litresRemaining < 0 ? "negative" : ""}">
         ${litres(balance.litresRemaining)}
       </td>
       <td data-label="Pump value left">${money(balance.pumpRemaining)}</td>
@@ -637,10 +624,10 @@ function updatePaymentPreview() {
   els.paymentPreview.innerHTML = `
     <b>${money(amount)}</b> at <b>${pricePerLitre(paidRate)}</b>
     = <b>${litres(volume)}</b><br>
-    Subsidy used: <b>${money(subsidyUsed)}</b><br>
-    After payment: <b>${money(subsidyLeft)}</b> subsidy,
-    <b>${litres(litresLeft)}</b>,
-    <b>${money(pumpLeft)}</b> pump value left.
+    Company allowance used (BUDI95 equivalent): <b>${money(subsidyUsed)}</b><br>
+    Company balance left: <b>${money(subsidyLeft)}</b><br>
+    Estimated company litres left: <b>${litres(litresLeft)}</b><br>
+    Remaining pump-price equivalent: <b>${money(pumpLeft)}</b>.
   `;
   if (rateType === "budi95") {
     const month = String(els.dateInput.value || today()).slice(0, 7);
